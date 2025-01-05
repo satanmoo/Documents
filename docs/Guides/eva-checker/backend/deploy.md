@@ -4,9 +4,11 @@
 
 ### 배포할 EC2에 Docker 설치하기
 
-- https://docs.docker.com/engine/install/ubuntu/
+- https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository
 
 ### 배포할 EC2에 AWS CLI 설정
+
+- ec2 각각 설정
 
 ```shell
 sudo apt update
@@ -25,10 +27,14 @@ IAM 자격 증명 설정
 aws configure
 ```
 
-- AWS Access Key ID: IAM 사용자의 액세스 키 ID
-- Secret Access Key: IAM 사용자의 비밀 액세스 키
-- Default region name: ECR이 위치한 AWS 리전 (예: ap-northeast-2)
-- Dault output format: json 또는 text (원하는 형식)
+- AWS Access Key ID:
+    - IAM 사용자의 액세스 키 ID
+- Secret Access Key:
+    - IAM 사용자의 비밀 액세스 키
+- Default region name:
+    - ECR이 위치한 AWS 리전 (예: ap-northeast-2)
+- Dault output format:
+    - json 또는 text (원하는 형식)
 
 ### DockerFile 작성
 
@@ -40,7 +46,7 @@ aws configure
 # eclipse-temurin:17-jdk 이미지를 기반으로 새 단계(빌드 단계)를 정의, JDK가 포함된 환경을 사용
 FROM eclipse-temurin:17-jdk AS builder
 
-# Build context에 전체 소스를 복사
+# Build context에(/app: 컨테이너 내부에서 소스 파일을 저장하고 작업을 수행하기 위한 작업 디렉토리) 전체 소스를 복사
 COPY . /app
 WORKDIR /app
 
@@ -83,6 +89,9 @@ jobs:
     # define the type of machine(runner) to run the job on.
     runs-on: ubuntu-latest
     # A job contains a sequence of tasks called "steps". Steps can run commands,
+    env:
+      IMAGE_NAME: ${{ secrets.IMAGE_NAME }}
+      CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }}
     steps:
 
       - name: check-out
@@ -115,8 +124,8 @@ jobs:
       - name: Build Docker Image # -f 옵션으로 경로 지정
         run: |
           echo "Building Docker image..."
-          docker build -t ssc-backend -f web/Dockerfile .
-          docker tag ssc-backend:latest ${{ secrets[format('{0}_ECR_REPOSITORY_URI', github.event.inputs.profile)] }}:latest
+          docker build -t $IMAGE_NAME -f web/Dockerfile .
+          docker tag $IMAGE_NAME:latest ${{ secrets[format('{0}_ECR_REPOSITORY_URI', github.event.inputs.profile)] }}:latest
           echo "Docker image tagged as ${{ secrets[format('{0}_ECR_REPOSITORY_URI', github.event.inputs.profile)] }}:latest"
 
       - name: Push Docker Image to Amazon ECR
@@ -151,6 +160,7 @@ jobs:
           SSH_USER: ${{ secrets[format('{0}_SSH_USER', github.event.inputs.profile)] }}
           ECR_IMAGE_URI: ${{ secrets[format('{0}_ECR_REPOSITORY_URI', github.event.inputs.profile)] }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
+          CONTAINER_NAME: ${{ env.CONTAINER_NAME }}
         run: |
           echo "Starting SSH tunnel to $TARGET_HOST via $BASTION_HOST..."
           ssh -o StrictHostKeyChecking=no -N -L 2222:$TARGET_HOST:22 $SSH_USER@$BASTION_HOST &
@@ -165,9 +175,9 @@ jobs:
             set -e
             aws ecr get-login-password --region $AWS_REGION | sudo docker login --username AWS --password-stdin $ECR_IMAGE_URI
             sudo docker pull $ECR_IMAGE_URI:latest
-            sudo docker stop ssc-backend || true
-            sudo docker rm ssc-backend || true
-            sudo docker run -d --name ssc-backend -p 8080:8080 \
+            sudo docker stop $CONTAINER_NAME || true
+            sudo docker rm $CONTAINER_NAME || true
+            sudo docker run -d --name $CONTAINER_NAME -p 8080:8080 \
               --env-file ~/.env \
               $ECR_IMAGE_URI:latest
             sudo docker image prune -a -f
@@ -184,6 +194,7 @@ jobs:
           SSH_USER: ${{ secrets[format('{0}_SSH_USER', github.event.inputs.profile)] }}
           ECR_IMAGE_URI: ${{ secrets[format('{0}_ECR_REPOSITORY_URI', github.event.inputs.profile)] }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
+          CONTAINER_NAME: ${{ env.CONTAINER_NAME }}
         run: |
           echo "Starting SSH tunnel to $TARGET_HOST via $BASTION_HOST..."
           ssh -o StrictHostKeyChecking=no -N -L 2222:$TARGET_HOST:22 $SSH_USER@$BASTION_HOST &
@@ -198,9 +209,9 @@ jobs:
             set -e
             aws ecr get-login-password --region $AWS_REGION | sudo docker login --username AWS --password-stdin $ECR_IMAGE_URI
             sudo docker pull $ECR_IMAGE_URI:latest
-            sudo docker stop ssc-backend || true
-            sudo docker rm ssc-backend || true
-            sudo docker run -d --name ssc-backend -p 8080:8080 \
+            sudo docker stop $CONTAINER_NAME || true
+            sudo docker rm $CONTAINER_NAME || true
+            sudo docker run -d --name $CONTAINER_NAME -p 8080:8080 \
               --env-file ~/.env \
               $ECR_IMAGE_URI:latest
             sudo docker image prune -a -f
@@ -216,6 +227,7 @@ jobs:
           SSH_USER: ${{ secrets[format('{0}_SSH_USER', github.event.inputs.profile)] }}
           ECR_IMAGE_URI: ${{ secrets[format('{0}_ECR_REPOSITORY_URI', github.event.inputs.profile)] }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
+          CONTAINER_NAME: ${{ env.CONTAINER_NAME }}
         run: |
           echo "Copying .env file to target EC2 instance for development..."
           scp -o StrictHostKeyChecking=no .env $SSH_USER@$SSH_HOST:~/.env
@@ -225,9 +237,11 @@ jobs:
             set -e
             aws ecr get-login-password --region $AWS_REGION | sudo docker login --username AWS --password-stdin $ECR_IMAGE_URI
             sudo docker pull $ECR_IMAGE_URI:latest
-            sudo docker stop ssc-backend || true
-            sudo docker rm ssc-backend || true
-            sudo docker run -d --name ssc-backend -p 8080:8080 --env-file ~/.env $ECR_IMAGE_URI:latest
+            sudo docker stop $CONTAINER_NAME || true
+            sudo docker rm $CONTAINER_NAME || true
+            sudo docker run -d --name $CONTAINER_NAME -p 8080:8080 \
+              --env-file ~/.env \
+              $ECR_IMAGE_URI:latest
             sudo docker image prune -a -f
           EOF
 
