@@ -1,5 +1,16 @@
 # Location Data Source
 
+- 스마트폰에서 수집하는 위치관련 데이터에 대한 문서
+
+## Content
+
+1. [Data Format](#data-format)
+2. [Expo location API](#expo-location-api)
+3. [Expo location usage](#expo-location-usage)
+4. [Geocoding API](#geocoding-api)
+5. [Geocoding Usage](#geocoding-usage)
+6. [Reference material](#reference-material)
+
 ## Data Format
 
 ### LocationObject
@@ -33,7 +44,7 @@
     - 위치의 불확실성 반경
     - 미터 단위
 - altitude:
-    - WGS 84 기준 고도
+    - WGS 84 좌표계 기준 고도
     - 미터 단위
 - altitudeAccuracy:
     - 고도 값의 정확도
@@ -72,17 +83,12 @@
 
 - [ref](https://docs.expo.dev/versions/latest/sdk/location/)
 
-## API
+## Expo location API
 
 ### Location.startLocationUpdatesAsync(taskName, options)
 
 - 백그라운드 위치 추적
 - [docs](https://docs.expo.dev/versions/latest/sdk/location/#locationstartlocationupdatesasynctaskname-options)
-
-## Options
-
-- 백그라운드 위치 수집
-- 옵션으로 제어 가능
 
 ### LocationOptions
 
@@ -123,7 +129,7 @@
 - defer 관련 처리는 버퍼와 유사하게 동작한다. 지연된 위치를 모두 업데이트하는게 아니라 미리 계산해놓고, 특정 조건을 만족하면 보고(report)하게 된다.
     - 보고(report)는 다른 시스템, 컴포넌트 등으로 위치 정보를 보내는 Task를 수행하는 것
 
-## Usage
+## Expo location usage
 
 ### 안드로이드
 
@@ -153,13 +159,158 @@
     - true
 
 ### common
-    
+
 - expo location 에서 안드로이드는 시간(time interval)기반 위치 추적 api를 제공하지만, ios는 제공하지 않음
 - 일관성을 위해 안드로이드의 시간기반 위치 추적을 사용하지 않고, 두 플랫폼 모두 거리 기반 위치추적
 - 위치 정보를 수집하고, 업데이트 시간을 통해 직접 체류시간을 계산
-  - timestamp 속성 활용
+    - timestamp 속성 활용
 
-## 참고 소스 코드
+## Geocoding API
+
+- 설명:
+    - 좌표를 주소로 변환
+    - 일일 요청건수는 무제한
+
+- 제한:
+    - 개발키: 개발을 목적으로하며 유효기간은 6개월, 최대 3회 연장가능합니다.
+    - 운영키: 서비스 운영을 목적으로하며 유효기간은 2년, 유효기간 연장 신청을 통해 관리자 심사 후 연장가능합니다.
+        - 개발키 최대 연장 후 운영키로 변경
+
+- 입력:
+    - service:
+        - 설명:
+            - 서비스 이름
+            - 기본값은 "address"로 바꿀필요 없음
+    - version:
+        - 설명:
+            - 요청 서비스 버전
+            - 기본값은 "2.0"으로 바꿀필요 없음
+    - request:
+        - 설명:
+            - 서비스 오퍼레이션
+            - 좌표를 주소로 변환하기 때문에 "GetAddress" 값을 입력
+    - point:
+        - 설명:
+            - 좌표
+        - 포맷:
+            - x,y
+            - 경도,위도
+        - 샘플데이터:
+            - "126.978275264,37.566642192"
+    - crs:
+        - 설명:
+            - 좌표계
+        - 샘플데이터:
+            - "epsg:4326"
+            - WGS84 경위도 좌표계 ExpoLocation의 위도,경도 좌표계와 동일하게 지정
+            - WGS84 경위도 좌표계에 대응하는 값이 "epsg:4326"
+    - type:
+        - 설명:
+            - 검색 주소 유형
+            - 도로명주소, 지번주소 모두 요청가능
+        - 샘플데이터:
+            - "BOTH"
+            - 도로명주소, 지번주소 모두 포함
+    - zipcode:
+        - 설명:
+            - 우편 번호 반환여부
+    - callback:
+        - 설명:
+            - format 값이 "json" 인 경우 콜백함수 지원
+
+### example
+
+- input
+
+```shell
+https://api.vworld.kr/req/address?service=address&request=getAddress&version=2.0&crs=epsg:4326&point=126.996777777777,37.5176055555555&format=json&type=both&zipcode=true&simple=false&key=<myapikey>
+```
+
+- output
+- 도로명 주소는 없는 곳이 있음
+
+```json
+{
+  "response": {
+    "service": {
+      "name": "address",
+      "version": "2.0",
+      "operation": "getAddress",
+      "time": "9(ms)"
+    },
+    "status": "OK",
+    "input": {
+      "point": {
+        "x": "126.9706519",
+        "y": "37.5841367"
+      },
+      "crs": "epsg:4326",
+      "type": "both"
+    },
+    "result": [
+      {
+        "zipcode": "03047",
+        "type": "parcel",
+        "text": "서울특별시 종로구 궁정동 12-1",
+        "structure": {
+          "level0": "대한민국",
+          "level1": "서울특별시",
+          "level2": "종로구",
+          "level3": "",
+          "level4L": "궁정동",
+          "level4LC": "1111010300",
+          "level4A": "청운효자동",
+          "level4AC": "1111051500",
+          "level5": "12-1",
+          "detail": ""
+        }
+      },
+      {
+        "zipcode": "03047",
+        "type": "road",
+        "text": "서울특별시 종로구 자하문로 92 (궁정동,청운효자동주민센터)",
+        "structure": {
+          "level0": "대한민국",
+          "level1": "서울특별시",
+          "level2": "종로구",
+          "level3": "궁정동",
+          "level4L": "자하문로",
+          "level4LC": "3100012",
+          "level4A": "청운효자동",
+          "level4AC": "1111051500",
+          "level5": "92",
+          "detail": "청운효자동주민센터"
+        }
+      }
+    ]
+  }
+}
+```
+
+- [ref](https://www.vworld.kr/dev/v4dv_geocoderguide2_s002.do)
+
+## Geocoding usage
+
+- 위,경도를 주소로 변환
+    - reverse geocoding
+- 법정동, 행정동 유저에게 선택하게 해도 좋아보임
+
+### solution 1
+
+- 미리 격자에 대한 대표 주소를 저장해놓는 방식
+- 위치 정보를 수집해 격자로 변환
+- 기상청에서 제공하는 {격자쌍:위,경도} 는 1:1 대응이고, 이 위,경도를 geocoding 한 결과 {위,경도: 주소} 를 조회
+    - TODO: 기상청에 격자쌍 -> 위,경도 어떤식으로 결정되는지 문의해놨음
+
+- ["2. 동네예보(단기예보, 초단기예보, 실황) 격자자료" -> "동네예보 격자 번호 → 위·경도 변환"](https://apihub.kma.go.kr/) 참고
+
+### solution 2
+
+- 자체 지도 db 구축하고
+- 검색엔진
+- ... 불가능
+
+## Reference material
 
 ### android
 
@@ -375,3 +526,8 @@ internal enum LocationAccuracy: Int, Enumerable {
   return [newestLocation.timestamp timeIntervalSinceDate:oldestLocation.timestamp] >= interval / 1000.0 && _deferredDistance >= distance;
 }
 ```
+
+## Change History
+
+- 20250115: reverse geocoding API 추가
+    - 알림 메시지에 주소를 표시하기 위함
