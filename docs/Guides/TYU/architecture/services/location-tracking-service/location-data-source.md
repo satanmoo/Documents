@@ -293,16 +293,19 @@ https://api.vworld.kr/req/address?service=address&request=getAddress&version=2.0
 
 - 위,경도를 주소로 변환
     - reverse geocoding
-- 법정동, 행정동 유저에게 선택하게 해도 좋아보임
 
 ### solution 1
 
 - 미리 격자에 대한 대표 주소를 저장해놓는 방식
 - 위치 정보를 수집해 격자로 변환
 - 기상청에서 제공하는 {격자쌍:위,경도} 는 1:1 대응이고, 이 위,경도를 geocoding 한 결과 {위,경도: 주소} 를 조회
-    - TODO: 기상청에 격자쌍 -> 위,경도 어떤식으로 결정되는지 문의해놨음
-
-- ["2. 동네예보(단기예보, 초단기예보, 실황) 격자자료" -> "동네예보 격자 번호 → 위·경도 변환"](https://apihub.kma.go.kr/) 참고
+    - Lambert-Conformal map projection 으로 역 역산도 코드 예시 제공됨
+        - api 호출할 필요없이 내부에서 계산 가능
+        - 위도,경도 -> 격자
+            - many to one 관계
+        - 격자 -> 위도,경도 (역으로 변환)
+            - one to one 관계
+        - 어떤 위도,경도를 격자로 변환하고 다시 역으로 변환했을 때 원래의 위도,경도 값이 나오지 않을 수 있음
 
 ### solution 2
 
