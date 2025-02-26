@@ -49,27 +49,168 @@
 >
 > [source](https://docs.gradle.org/current/userguide/custom_plugins.html#sec:convention_plugins)
 
-## Using Convention Plugins with a Version Catalog
+### Example
+
+```kotlin
+// buildSrc/build.gradle.kts
+
+// 1. Add kotlin-dsl plugin
+plugins {
+    `kotlin-dsl`
+}
+
+// 2. Specifying the Repository
+repositories {
+    mavenCentral()
+}
+
+// 3. Add Kotlin Gradle Plugin
+dependencies {
+    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.23")
+}
+```
+
+#### 1. Add kotlin-dsl plugin
+
+- This plugin allows discovering convention plugins written as precompiled script plugins.
+
+> In order for precompiled script plugins to be discovered, the buildSrc project needs to apply the kotlin-dsl plugin in its build.gradle.kts file.  
+> [primary-source](https://docs.gradle.org/current/samples/sample_convention_plugins.html#compiling_convention_plugins)
+
+- [Gradle Kotlin DSL Plugin](https://plugins.gradle.org/plugin/org.gradle.kotlin.kotlin-dsl)
+- [source code](https://github.com/gradle/gradle/tree/HEAD/platforms/core-configuration/kotlin-dsl-plugins)
+- You can check classes such as `KotlinDslCompilerPlugins` in the source code.
+
+#### 2. Specifying the Repository
+
+- Specifies the repository from which Gradle will download the necessary dependencies.
+
+#### 3. Add Kotlin Gradle Plugin
+
+- Downloads the Kotlin Gradle Plugin library and adds it to classpath of buildSrc.
+- When using plugin identifiers such as `kotlin("jvm")` in precompiled script plugins or other Kotlin DSL code within buildSrc, they reference the plugin implementation included in this dependency.
+- Therefore, the plugin version must be specified in the build script(`buildSrc/build.gradle.kts`).
+- In a convention plugin, the `plugins {}` block cannot declare a version but instead references the added plugin implementation in build script(`buildSrc/build.gradle.kts`).
+- Refer to the example in the link below.
+- [applying-external-plugins](https://docs.gradle.org/current/userguide/implementing_gradle_plugins_precompiled.html#sec:applying_external_plugins)
+
+```kotlin
+// buildSrc/src/main/kotlin/kotlin-convention.gradle.kts
+// (Precompiled Script Plugin)
+
+// 1. Apply kotlin-jvm module
+plugins {
+    kotlin("jvm")
+}
+
+// 2. Specify group & version
+group = "com.g2s"
+version = "unspecified"
+
+// 3. Specifying the Repository
+repositories {
+    mavenCentral()
+}
+
+// 4. Add Dependencies
+dependencies {
+    testImplementation(kotlin("test"))
+}
+
+// 5. Applying the JUnit Platform
+tasks.test {
+    useJUnitPlatform()
+}
+
+// 6. Setting JDK 17
+kotlin {
+    jvmToolchain(17)
+}
+```
+
+#### 1. Apply kotlin-jvm module
+
+- References the JVM module from the Kotlin Gradle Plugin added in the build script(`buildSrc/build.gradle.kts`).
+
+#### 2. Specify group & version
+
+- Specifies the group ID and version of the plugin.
+- Ensures that Gradle can clearly identify the plugin or library.
+- Typically, when creating a Gradle project plugin, a specific group and version must be set to allow other projects to reference it easily.
+    - `unspecified` means that the version has not been explicitly defined.
+
+#### 3. Specifying the repository
+
+- Specifies the repository (Maven Central) from which Kotlin and other dependencies will be downloaded.
+- Apart from the `kotlin("jvm")` plugin, any additional libraries required by the project must be explicitly downloaded.
+- This is configured to fetch the Kotlin standard library and other plugins from Maven Central.
+
+#### 4. Add Dependencies
+
+- `kotlin("test")` is a test utility set that includes JUnit and other Kotlin test libraries.
+- It references the `org.jetbrains.kotlin:kotlin-test` module from the added Kotlin Gradle Plugin in the build script(`buildSrc/build.gradle.kts`).
+
+#### 5. Applying the JUnit Platform
+
+- By default, Gradle runs JUnit 4, but this setting is required to use JUnit 5 (JUnit Jupiter).
+
+#### 6. Setting JDK 17
+
+- Configures the Kotlin compiler to use JDK 17.
+
+```kotlin
+// app1/build.gradle.kts
+plugins {
+   id("kotlin-convention")
+}
+
+```
+
+- The convention plugin, which defines common Kotlin build logic, can be applied to subprojects.
+
+## Managing Dependency Versions Using a Version Catalog
+
+- Instead of specifying the version of external libraries such as the Kotlin Gradle Plugin directly in build script(`buildSrc/build.gradle.kts`), version catalogs can be used to manage versions.
+- For details on using version catalogs, refer to this [document](version-catalog.md).
+
+### 1. Create a Version Catalog
 
 ```toml
 # gradle/libs.versions.toml
 [versions]
-kotlin = "1.9.0"
-
-[plugins]
-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
-application = { id = "application" }
+kotlin = "1.9.23"
 
 [libraries]
-kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
+kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 ```
 
+### 2. Create a Settings File
+
+- Since buildSrc is treated as a separate build from the main root project, it cannot directly access `../gradle/libs.versions.toml`.
+    - However, subprojects’ build scripts can access it by default.
+    - [reference](https://discuss.gradle.org/t/using-version-catalog-from-buildsrc-buildlogic-xyz-common-conventions-scripts/48534)
+- Therefore, the settings file must explicitly declare which version catalog file to import.
+- [importing-catalog-from-file](https://docs.gradle.org/current/userguide/version_catalogs.html#sec:importing-catalog-from-file)
+
 ```kotlin
-// buildSrc/src/main/kotlin/my-kotlin-application.gradle.kts
-// (Precompiled Script Plugin)
+// buildSrc/settings.gradle.kts
+
+dependencyResolutionManagement {
+    versionCatalogs {
+        create("libs") {
+            from(files("../gradle/libs.versions.toml"))
+        }
+    }
+}
+```
+
+### 3. Modify the Build Script
+
+```kotlin
+// buildSrc/build.gradle.kts
+
 plugins {
-    alias(libs.plugins.kotlin.jvm) // apply Kotlin JVM plugin
-    alias(libs.plugins.application) // apply application plugin
+    `kotlin-dsl`
 }
 
 repositories {
@@ -77,13 +218,9 @@ repositories {
 }
 
 dependencies {
-    implementation(libs.kotlin.stdlib) // Kotlin Standard Library
+    implementation(libs.kotlin.gradle.plugin)
 }
 ```
 
-- For details on using version catalogs, refer to this [document](version-catalog.md).
-
-## Additional References
-
-- [Gradle Kotlin 컨벤션 플러그인으로 효율적으로 멀티 모듈 관리하기](https://www.slideshare.net/slideshow/gradle-kotlin/261178195)
-- [Using Version Catalogs with Precompiled Script Plugins](https://discuss.gradle.org/t/using-version-catalogs-with-precompiled-script-plugins/45417)
+- Now, libraries can be referenced using the version catalog alias syntax.
+- [reference](https://docs.gradle.org/current/userguide/version_catalogs.html#sec:accessing-catalog)
