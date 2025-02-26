@@ -28,10 +28,14 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 > To access items in a version catalog defined in the standard libs.versions.toml file located in the gradle directory,
 > you use the libs object in your build scripts. For example, to reference a library, you can use libs.<alias>, and for
 > a plugin, you can use libs.plugins.<alias>.
-> 
+>
 > This section defines the plugins and their versions by mapping plugin IDs to version numbers. Just like libraries, you
 > can define plugin versions using aliases from the [versions] section or directly specify the version.
 > Which can be accessed in any project of the build using the plugins {} block. To refer to a plugin from the catalog,
 > use the alias() function
-> 
+>
 > [primary-source](https://docs.gradle.org/current/userguide/version_catalogs.html#sec:accessing-catalog)
+
+## Frequently asked questions about version catalogs
+
+- https://melix.github.io/blog/2021/03/version-catalogs-faq.html
