@@ -155,7 +155,7 @@ include(
 - However, [other approach](https://docs.gradle.org/current/userguide/plugins.html#sec:subprojects_plugins_dsl) is not recommended.
 
 - The following section explains step-by-step how to create and apply a convention plugin.
-- For more details, refer to [this document](../convention-plugin.md).
+- For more details, refer to [this document](../convention-plugin/convention-plugin.md).
 
 #### 1. Write the Version Catalog
 
