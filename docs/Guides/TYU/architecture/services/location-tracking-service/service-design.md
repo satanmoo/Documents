@@ -8,7 +8,7 @@
 
 - 주요 기능:
     - 이동 거리 기반 위치 수집
-    - 체류 시간 계산 및 자주 방문하는 위치 도출
+    - 자주 방문하는 위치 도출
     - 유저 정보 업데이트
 
 ## Data Flow
@@ -18,5 +18,4 @@
 - 데이터 변환:
     - 위,경도를 "Lambert Conformal Conic Projection"을 통해 격자쌍으로 변환
     - 격자쌍을 "Lambert Conformal Conic Projection" 역으로 변환해 위,경도를 구해 reverse geocoding 테이블 조회해 격자에 대응하는 주소를 얻음
-    - 격자에 따라 체류시간, 가장 마지막에 방문한 시간을 계산
 - 데이터 저장
