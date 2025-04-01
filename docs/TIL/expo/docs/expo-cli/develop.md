@@ -89,6 +89,14 @@ Metro waiting on exp://172.30.1.78:8081
 - .expo 폴더를 리셋하면 entropy를 초기화할 수 있음
 - 동일한 개발 세션에는 터널링한 public URL을 일관되게 유지할 수 있음
 
+- `/.expo/setting.json` 에서 entropy 확인할 수 있음
+
+```shell
+{
+  "urlRandomness": xxxxxx
+}
+```
+
 ### Offline
 
 > Offline will prevent the CLI from making network requests. If you don't use the flag and your computer has no internet connection, then offline support will automatically be enabled, it will just take a bit longer to verify the reachability.
